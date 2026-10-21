@@ -8,16 +8,11 @@ import 'i18n.dart';
 import 'map_screen.dart';
 import 'repo.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await loadLanguage(PlatformDispatcher.instance.locale.languageCode);
-
-  if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
-    runApp(const App(home: _NoServer()));
-    return;
-  }
-  await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
-  runApp(App(home: MapScreen(repo: Repo())));
+  // Первый кадр рисуем сразу, всё остальное — в _Startup: если что-то упадёт,
+  // пользователь увидит ошибку, а не вечную заставку.
+  runApp(const App(home: _Startup()));
 }
 
 class App extends StatelessWidget {
@@ -49,16 +44,69 @@ class App extends StatelessWidget {
   }
 }
 
-class _NoServer extends StatelessWidget {
-  const _NoServer();
+class _Startup extends StatefulWidget {
+  const _Startup();
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(tr('no_server'), textAlign: TextAlign.center),
-          ),
+  State<_Startup> createState() => _StartupState();
+}
+
+class _StartupState extends State<_Startup> {
+  static bool _supabaseReady = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  Future<void> _start() async {
+    setState(() => _error = null);
+    try {
+      await loadLanguage(PlatformDispatcher.instance.locale.languageCode);
+    } catch (_) {
+      // Без сохранённого языка обойдёмся: останется язык по умолчанию.
+    }
+    if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+      setState(() => _error = tr('no_server'));
+      return;
+    }
+    try {
+      if (!_supabaseReady) {
+        await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey)
+            .timeout(const Duration(seconds: 20));
+        _supabaseReady = true;
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = '${tr('err_generic')}\n\n$e');
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => MapScreen(repo: Repo())),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final error = _error;
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: error == null
+              ? const CircularProgressIndicator()
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SelectableText(error, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    FilledButton(onPressed: _start, child: Text(tr('retry'))),
+                  ],
+                ),
         ),
-      );
+      ),
+    );
+  }
 }

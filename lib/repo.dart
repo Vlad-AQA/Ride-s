@@ -28,9 +28,13 @@ class Repo {
   String? get userId => _db.auth.currentUser?.id;
 
   Future<void> start() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hidden = prefs.getStringList('hidden_types') ?? [];
-    visibleTypes.value = MarkerType.values.where((t) => !hidden.contains(t.key)).toSet();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hidden = prefs.getStringList('hidden_types') ?? [];
+      visibleTypes.value = MarkerType.values.where((t) => !hidden.contains(t.key)).toSet();
+    } catch (_) {
+      // Фильтр не прочитался — показываем все типы.
+    }
 
     if (_db.auth.currentSession == null) await _db.auth.signInAnonymously();
 

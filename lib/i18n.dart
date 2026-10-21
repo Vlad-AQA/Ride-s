@@ -15,8 +15,12 @@ Future<void> loadLanguage(String systemCode) async {
 
 Future<void> setLanguage(String code) async {
   lang.value = code;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('lang', code);
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lang', code);
+  } catch (_) {
+    // Не сохранилось — язык всё равно сменится до перезапуска.
+  }
 }
 
 String tr(String key, [Map<String, Object> args = const {}]) {
@@ -69,6 +73,7 @@ const _strings = <String, Map<String, String>>{
     'address': 'Адрес',
     'no_comments': 'Пока тихо. Расскажи, что там происходит',
     'send': 'Отправить',
+    'retry': 'Повторить',
     'settings': 'Настройки',
     'language': 'Язык',
     'show_types': 'Показывать на карте',
@@ -111,6 +116,7 @@ const _strings = <String, Map<String, String>>{
     'address': 'Address',
     'no_comments': 'Quiet so far. Tell others what is going on',
     'send': 'Send',
+    'retry': 'Retry',
     'settings': 'Settings',
     'language': 'Language',
     'show_types': 'Show on map',
@@ -153,6 +159,7 @@ const _strings = <String, Map<String, String>>{
     'address': 'ที่อยู่',
     'no_comments': 'ยังเงียบอยู่ เล่าให้คนอื่นฟังหน่อย',
     'send': 'ส่ง',
+    'retry': 'ลองอีกครั้ง',
     'settings': 'ตั้งค่า',
     'language': 'ภาษา',
     'show_types': 'แสดงบนแผนที่',
